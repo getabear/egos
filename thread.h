@@ -67,7 +67,8 @@ void thread_exit();
 /* Student's code goes here (Cooperative Threads). */
 struct cv {
 /* Define data structures for conditional variables */
-
+    queue_t tcb_queue;
+    int cv;
 };
 /* Student's code ends here. */
 
@@ -86,7 +87,7 @@ void cv_wait(struct cv *condition);
 void cv_signal(struct cv *condition);
 
 /* ctx_start and ctx_switch are defined in context.s */
-void  ctx_start(void **sp_old, void *sp_new);
+void ctx_start(void **sp_old, void *sp_new);
 void ctx_switch(void **sp_old, void *sp_new);
 
 /* _end is defined in thread.s */

@@ -6,22 +6,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define BUF_SIZE 32
 
-struct queue {
-    /* Student's code goes here (Cooperative Threads). */
-    // 定义一个指针数组
-    void *buf[BUF_SIZE];
-    int left, right;
-    /* Student's code ends here. */
-};
-typedef struct queue * queue_t;
+
+
 
 queue_t queue_new() {
     // printf("queue_new\n\r");s
     queue_t queue = malloc(sizeof(struct queue));
     /* Student's code goes here (Cooperative Threads). */
-    for(int i = 0; i < BUF_SIZE; i++){
+    for(int i = 0; i < _BUF_SIZE; i++){
         queue->buf[i] = NULL;
     }
     queue->left = 0;
@@ -33,7 +26,7 @@ queue_t queue_new() {
 
 int queue_enqueue(queue_t queue, void* item) {
     /* Student's code goes here (Cooperative Threads). */
-    int idx = (queue->right + 1) % BUF_SIZE;
+    int idx = (queue->right + 1) % _BUF_SIZE;
     // 队列满了
     if(idx == queue->left){
         return -1;
@@ -51,7 +44,7 @@ int queue_dequeue(queue_t queue, void** pitem) {
         return -1;
     }
     *pitem = queue->buf[queue->left];
-    queue->left = (queue->left + 1) % BUF_SIZE;
+    queue->left = (queue->left + 1) % _BUF_SIZE;
     /* Student's code ends here. */
     return 0;
 }

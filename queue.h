@@ -7,7 +7,18 @@
  * Clients of this package do not need to know how queues are
  * represented.  They see and manipulate only queue_t's.
  */
-typedef struct queue *queue_t;
+#ifndef QUEUE_H
+#define QUEUE_H
+
+#define _BUF_SIZE 1024
+struct queue {
+    /* Student's code goes here (Cooperative Threads). */
+    // 定义一个指针数组
+    void *buf[_BUF_SIZE];
+    int left, right;
+    /* Student's code ends here. */
+};
+typedef struct queue * queue_t;
 
 /*
  * Return an empty queue.  Returns NULL on error (out of memory).
@@ -28,3 +39,5 @@ int queue_enqueue(queue_t queue, void* item);
  * if queue is empty.
  */
 int queue_dequeue(queue_t queue, void** pitem);
+
+#endif

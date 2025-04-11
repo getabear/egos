@@ -122,6 +122,7 @@ void thread_exit() {
     int ret = queue_dequeue(tcb_queue, &tmp);
     // 没有别的线程了
     if(ret != 0){
+        printf("thread_exit() no other\n\r");
         free(end->init_sp);
         free(end);
         return;
@@ -138,24 +139,42 @@ void thread_exit() {
 
 /* Student's code goes here (Cooperative Threads). */
 /* Define helper functions, if needed, for conditional variables */
+struct cv nonempty, nonfull;
 
 /* Student's code ends here. */
 
 void cv_init(struct cv *condition) {
     /* Student's code goes here (Cooperative Threads). */
-
+    condition->tcb_queue = queue_new();
+    condition->cv = 0;
     /* Student's code ends here. */
 }
 
 void cv_wait(struct cv *condition) {
     /* Student's code goes here (Cooperative Threads). */
-
+    while(!condition->cv){
+        void *tmp = NULL;
+        queue_dequeue(tcb_queue, &tmp);
+        thread_t next = (thread_t)tmp;
+        thread_t old = current;
+        current = next;
+        queue_enqueue(condition->tcb_queue, old);
+        ctx_switch(&old->sp, current->sp);
+    }
+    condition->cv -= 1; 
     /* Student's code ends here. */
 }
 
 void cv_signal(struct cv *condition) {
     /* Student's code goes here (Cooperative Threads). */
-
+    condition->cv += 1;
+    void *tmp = NULL;
+    int ret = queue_dequeue(condition->tcb_queue, &tmp);
+    if(ret != 0){
+        return;
+    }
+    queue_enqueue(tcb_queue, tmp);
+    
     /* Student's code ends here. */
 }
 
@@ -166,36 +185,38 @@ int head = 0, tail = 0;
 struct cv nonempty, nonfull;
 
 void produce(void* item) {
-    while (1) {
+    // printf("produce()\n\r");
+    int i = 0;
+    while (i < 1) {
         while (count == BUF_SIZE) cv_wait(&nonfull);
         /* At this point, the buffer is not full. */
 
         /* Student's code goes here (Cooperative Threads). */
         /* Print out producer thread ID and the item pointer */
-
+        printf("produce %d\n\r", i++);
         /* Student's code ends here. */
         buffer[tail] = item;
         tail = (tail + 1) % BUF_SIZE;
         count += 1;
         cv_signal(&nonempty);
-        // thread_yield();
     }
 }
 
 void consume(void *arg) {
-    while (1) {
+    // printf("consume()\n\r");
+    int i = 0;
+    while (i < 1) {
         while (count == 0) cv_wait(&nonempty);
         /* At this point, the buffer is not empty. */
 
         /* Student's code goes here (Cooperative Threads). */
         /* Print out producer thread ID and the item pointer */
-
+        printf("consume %d\n\r", i++);
         /* Student's code ends here. */
         void* result = buffer[head];
         head = (head + 1) % BUF_SIZE;
         count -= 1;
         cv_signal(&nonfull);
-        // thread_yield();
     }
 }
 
@@ -209,17 +230,22 @@ void nihao(){
 
 int main() {
     thread_init();
-
-    // for (int i = 0; i < 500; i++)
-    //     thread_create(consume, NULL, STACK_SIZE / 16);
-
-    // for (int i = 0; i < 500; i++)
-    //     thread_create(produce, NULL, STACK_SIZE / 16);
-    thread_create(nihao, NULL, STACK_SIZE / 16);
-    for(int i = 0; i < 10; i++){
-        printf("main : %d\n\r", i);
-        thread_yield();
+    printf("main()\n\r");
+    cv_init(&nonempty);
+    cv_init(&nonfull);
+    for (int i = 0; i < 10; i++){
+        // printf("consume create %d \n\r", i);
+        thread_create(consume, NULL, STACK_SIZE / 16);
     }
+        
+
+    for (int i = 0; i < 10; i++)
+        thread_create(produce, NULL, STACK_SIZE / 16);
+    // thread_create(nihao, NULL, STACK_SIZE / 16);
+    // for(int i = 0; i < 10; i++){
+    //     printf("main : %d\n\r", i);
+    //     thread_yield();
+    // }
     printf("main thread exits\n\r");
     thread_exit();
 }
