@@ -13,7 +13,9 @@ struct thread {
     void* sp;
     enum thread_status status;
 /* Define the data structure for thread control block (TCB) */
-
+    void* init_sp;
+    void* fun;
+    void* args;
 };
 /* Student's code ends here. */
 

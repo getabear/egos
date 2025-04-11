@@ -68,17 +68,19 @@
     lw tp,  116(sp)
     lw sp,  120(sp)
 .endm
-
+  
 /* void ctx_start(void** old_sp, void* new_sp); */
 /*                       ^             ^        */
 /*                       |             |        */
 /*                       a0            a1       */
+/* 这里的二重指针，因为TCB中的sp是一个指针， 所以是传入TCB.sp的地址， 这个地址的值是指针，也就是二重指针 */
 ctx_start:
     addi sp,sp,-128
     SAVE_ALL_REGISTERS
     sw sp,0(a0)       /* Remember the sp of the current thread */
-    mv sp,a1          /* Switch to the stack of the newly created thread */
+    mv sp,a1         /* Switch to the stack of the newly created thread */
     call ctx_entry    /* Call ctx_entry(), which further calls the entry function of the newly created thread */
+
 
 /* void ctx_switch(void** old_sp, void* new_sp); */
 /*                        ^             ^        */

@@ -52,36 +52,87 @@ char* _sbrk(int size) {
 
 /* Student's code goes here (Cooperative Threads). */
 /* Define helper functions, if needed, for multi-threading */
-
+typedef struct thread* thread_t; 
+thread_t current = NULL;
+queue_t tcb_queue = NULL;
+thread_t main_tcb = NULL;
 /* Student's code ends here. */
 
+// 主线程使用
 void thread_init() {
     /* Student's code goes here (Cooperative Threads). */
-
+    // 创建tcb控制队列
+    tcb_queue = queue_new();
+    // 主线程tcb
+    thread_t main_tcb = malloc(sizeof(struct thread));
+    main_tcb->sp = NULL;
+    current = main_tcb;
     /* Student's code ends here. */
 }
 
 void ctx_entry() {
     /* Student's code goes here (Cooperative Threads). */
-
+    // 初始化栈
+    void (*entry)(void *arg) = current->fun;
+    entry(current->args);
+    thread_exit();
     /* Student's code ends here. */
 }
 
 void thread_create(void (*entry)(void *arg), void *arg, int stack_size) {
     /* Student's code goes here (Cooperative Threads). */
-
+    thread_t child_t = malloc(sizeof(struct thread));
+    child_t->init_sp = malloc(stack_size);
+    // 移动到栈顶
+    child_t->sp = (void*)((char *)child_t->init_sp + stack_size);
+    // 设置线程入口及参数
+    child_t->fun = entry;
+    child_t->args = arg;
+    // 切换
+    thread_t old = current;
+    queue_enqueue(tcb_queue, old);
+    current = child_t;
+    // 开始执行, 保存当前上下文
+    ctx_start(&old->sp, current->sp);
     /* Student's code ends here. */
 }
 
 void thread_yield() {
     /* Student's code goes here (Cooperative Threads). */
-
+    void *tmp = NULL;
+    int ret = queue_dequeue(tcb_queue, &tmp);
+    // 没有别的线程了
+    if(ret != 0){
+        return;
+    }
+    thread_t old = current;
+    // 将其放入队列中
+    queue_enqueue(tcb_queue, old);
+    current = (thread_t)tmp;
+    ctx_switch(&old->sp, current->sp);
     /* Student's code ends here. */
 }
 
 void thread_exit() {
     /* Student's code goes here (Cooperative Threads). */
-
+    printf("thread_exit\n\r");
+    thread_t end = current;
+    // 获取下一个线程
+    void *tmp = NULL;
+    int ret = queue_dequeue(tcb_queue, &tmp);
+    // 没有别的线程了
+    if(ret != 0){
+        free(end->init_sp);
+        free(end);
+        return;
+    }
+    current = (thread_t)tmp;
+    // 释放结束tcb资源
+    free(end->init_sp);
+    free(end);
+    // 切换线程, 传入局部变量的tmp就不会保留上下文的栈指针了,永不返回
+    ctx_switch(&tmp, current->sp);
+    printf("never print");
     /* Student's code ends here. */
 }
 
@@ -127,6 +178,7 @@ void produce(void* item) {
         tail = (tail + 1) % BUF_SIZE;
         count += 1;
         cv_signal(&nonempty);
+        // thread_yield();
     }
 }
 
@@ -143,18 +195,31 @@ void consume(void *arg) {
         head = (head + 1) % BUF_SIZE;
         count -= 1;
         cv_signal(&nonfull);
+        // thread_yield();
     }
+}
+
+void nihao(){
+    for(int i = 0; i < 20; i++){
+        printf("nihao : %d\n\r", i);
+        thread_yield();
+    }
+    printf("nihao end\n\r");
 }
 
 int main() {
     thread_init();
 
-    for (int i = 0; i < 500; i++)
-        thread_create(consume, NULL, STACK_SIZE / 16);
+    // for (int i = 0; i < 500; i++)
+    //     thread_create(consume, NULL, STACK_SIZE / 16);
 
-    for (int i = 0; i < 500; i++)
-        thread_create(produce, NULL, STACK_SIZE / 16);
-
+    // for (int i = 0; i < 500; i++)
+    //     thread_create(produce, NULL, STACK_SIZE / 16);
+    thread_create(nihao, NULL, STACK_SIZE / 16);
+    for(int i = 0; i < 10; i++){
+        printf("main : %d\n\r", i);
+        thread_yield();
+    }
     printf("main thread exits\n\r");
     thread_exit();
 }

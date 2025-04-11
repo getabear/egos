@@ -6,31 +6,52 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#define BUF_SIZE 32
+
 struct queue {
     /* Student's code goes here (Cooperative Threads). */
-
+    // 定义一个指针数组
+    void *buf[BUF_SIZE];
+    int left, right;
     /* Student's code ends here. */
 };
 typedef struct queue * queue_t;
 
 queue_t queue_new() {
-    queue_t queue      = malloc(sizeof(*queue));
+    // printf("queue_new\n\r");s
+    queue_t queue = malloc(sizeof(struct queue));
     /* Student's code goes here (Cooperative Threads). */
-
+    for(int i = 0; i < BUF_SIZE; i++){
+        queue->buf[i] = NULL;
+    }
+    queue->left = 0;
+    queue->right = 0;
     /* Student's code ends here. */
+    // printf("queue_new end\n\r");
     return queue;
 }
 
 int queue_enqueue(queue_t queue, void* item) {
     /* Student's code goes here (Cooperative Threads). */
-
+    int idx = (queue->right + 1) % BUF_SIZE;
+    // 队列满了
+    if(idx == queue->left){
+        return -1;
+    }
+    queue->buf[queue->right] = item;
+    queue->right = idx;
     /* Student's code ends here. */
     return 0;
 }
 
 int queue_dequeue(queue_t queue, void** pitem) {
     /* Student's code goes here (Cooperative Threads). */
-
+    // 队列为空
+    if(queue->left == queue->right){
+        return -1;
+    }
+    *pitem = queue->buf[queue->left];
+    queue->left = (queue->left + 1) % BUF_SIZE;
     /* Student's code ends here. */
     return 0;
 }
