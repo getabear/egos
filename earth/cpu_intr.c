@@ -47,3 +47,5 @@ void intr_init(uint core_id) {
     asm("csrs mie, %0" ::"r"(0x80));
     asm("csrs mstatus, %0" ::"r"(0x88));
 }
+
+

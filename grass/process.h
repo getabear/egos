@@ -25,7 +25,9 @@ struct process {
     /* Student's code goes here (Preemptive Scheduler | System Call). */
 
     /* Add new fields for scheduling metrics, MLFQ, or process sleep. */
-
+    // 构建创建时间， 响应时间（创建到调度的时间）， 在cpu上运行的时间, 上次运行的开始时间
+    ulonglong create_time, response_time, cpu_time, last_time;
+    int schedule_num;           // 调度的次数
     /* Student's code ends here. */
 };
 

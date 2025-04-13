@@ -90,7 +90,13 @@ static void proc_yield() {
     if (!CORE_IDLE && curr_status == PROC_RUNNING) proc_set_runnable(curr_pid);
 
     /* Student's code goes here (Preemptive Scheduler | System Call). */
-
+    struct process *p = &proc_set[curr_proc_idx];
+    if(p->last_time != 0){
+        // 记录cpu时间
+        p->cpu_time +=  mtime_get() - p->last_time;
+        // INFO("p->cputime : %d", p->cpu_time);
+    }
+   
     /* Replace the loop below to find the next process to schedule with MLFQ.
      * Do not schedule a process that should still be sleeping at this time. */
 
@@ -105,6 +111,18 @@ static void proc_yield() {
             break;
         }
     }
+    p = &proc_set[curr_proc_idx];
+    ulonglong now = mtime_get();
+    p->last_time = now;
+    // 下个被调度的程序和当前的不一样
+    if(next_idx != curr_proc_idx){
+        p->schedule_num += 1;
+    }
+    // 如果第一次被调用，记录响应时间
+    if(p->response_time == 0){
+        p->response_time = now - p->create_time;
+    }
+
 
     /* Measure and record scheduling metrics for the current process before it
      * yields; Measure and record scheduling metrics for the next process. */
