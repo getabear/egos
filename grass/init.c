@@ -27,7 +27,7 @@ void grass_entry() {
 
     /* Initialize the grass interface functions for process sleep
      * and displaying multicore process information. */
-
+    grass->sys_sleep = proc_sleep;    
     /* Student's code ends here. */
 
     /* Load the first system server GPID_PROCESS */

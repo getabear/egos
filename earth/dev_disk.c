@@ -172,7 +172,7 @@ static enum disk_type { SD_CARD, FLASH_ROM } type;
 void disk_read(uint block_no, uint nblocks, char* dst) {
     if (type == SD_CARD) {
         /* Student's code goes here (Serial Device Driver). */
-
+        // INFO("type == SD_CARD");
         /* Replace the loop below by reading multiple SD
          * card blocks using a single SD card command, cmd18 */
         for (uint i = 0; i < nblocks; i++)
@@ -180,6 +180,7 @@ void disk_read(uint block_no, uint nblocks, char* dst) {
 
         /* Student's code ends here. */
     } else {
+        // INFO("type == else");
         char* src = (char*)BOARD_FLASH_ROM + block_no * BLOCK_SIZE;
         memcpy(dst, src, nblocks * BLOCK_SIZE);
     }

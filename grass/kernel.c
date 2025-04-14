@@ -91,6 +91,8 @@ static void proc_yield() {
 
     /* Student's code goes here (Preemptive Scheduler | System Call). */
     struct process *p = &proc_set[curr_proc_idx];
+    // 得到当前时间
+    ulonglong now = mtime_get();
     if(p->last_time != 0){
         // 记录cpu时间
         p->cpu_time +=  mtime_get() - p->last_time;
@@ -105,6 +107,10 @@ static void proc_yield() {
     for (uint i = 1; i <= MAX_NPROCESS; i++) {
         struct process* p = &proc_set[(curr_proc_idx + i) % MAX_NPROCESS];
         if (p->status == PROC_PENDING_SYSCALL) proc_try_syscall(p);
+        // 唤醒睡眠的进程
+        // if(p->status == PROC_SLEEP_SYSCALL && now >= p->wake_time){
+        //     p->status = PROC_RUNNABLE;
+        // }
 
         if (p->status == PROC_READY || p->status == PROC_RUNNABLE) {
             next_idx = (curr_proc_idx + i) % MAX_NPROCESS;
@@ -112,7 +118,6 @@ static void proc_yield() {
         }
     }
     p = &proc_set[curr_proc_idx];
-    ulonglong now = mtime_get();
     p->last_time = now;
     // 下个被调度的程序和当前的不一样
     if(next_idx != curr_proc_idx){
@@ -128,7 +133,7 @@ static void proc_yield() {
      * yields; Measure and record scheduling metrics for the next process. */
 
     /* Student's code ends here. */
-
+    
     curr_proc_idx = next_idx;
     earth->timer_reset(core_in_kernel);
     if (CORE_IDLE) {
@@ -166,11 +171,15 @@ static void proc_try_send(struct process* sender) {
             dst->status != PROC_UNUSED) {
             /* Return if dst is not receiving or not taking msg from sender. */
             if (!(dst->syscall.type == SYS_RECV &&
-                  dst->syscall.status == PENDING))
-                return;
+                  dst->syscall.status == PENDING)){
+                    return;
+                }
+
             if (!(dst->syscall.sender == GPID_ALL ||
-                  dst->syscall.sender == sender->pid))
-                return;
+                  dst->syscall.sender == sender->pid)){
+                    return;
+                }
+                          
 
             dst->syscall.status = DONE;
             dst->syscall.sender = sender->pid;
@@ -212,7 +221,18 @@ void proc_sleep(int pid, uint usec) {
     /* Student's code goes here (System Call & Protection). */
 
     /* Update the struct process of process pid for process sleep. */
+    INFO("proc_sleep pid: %d, usec : %d", pid, usec);
+    ulonglong now = mtime_get();
 
+    // 设置唤醒时间
+    for(int i = 0; i < MAX_NPROCESS; i++){
+        if(proc_set[i].pid == pid){
+            proc_set[i].wake_time = now + usec;
+            proc_set[i].status = PROC_SLEEP_SYSCALL;
+            return;
+        }
+    }
+    // proc_yield();
     /* Student's code ends here. */
 }
 

@@ -16,8 +16,8 @@ enum grass_servers {
     GPID_PROCESS,   /* 1 */
     GPID_TERMINAL,  /* 2 */
     GPID_FILE,      /* 3 */
-    GPID_SHELL,     /* 4 */
-    GPID_USER_START /* 5 */
+    GPID_SHELL,     /* 5 */
+    GPID_USER_START /* 6 */
 };
 
 /* GPID_PROCESS */
@@ -27,7 +27,7 @@ enum grass_servers {
 
 /* Update struct proc_request for process sleep. */
 struct proc_request {
-    enum { PROC_SPAWN, PROC_EXIT, PROC_KILLALL } type;
+    enum { PROC_SPAWN, PROC_EXIT, PROC_KILLALL, PROC_SLEEP } type;
     int argc;
     char argv[CMD_NARGS][CMD_ARG_LEN];
 };

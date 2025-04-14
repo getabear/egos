@@ -55,6 +55,7 @@ int proc_alloc() {
             proc_set[i].cpu_time = 0;
             proc_set[i].response_time = 0;
             proc_set[i].schedule_num = 0;
+            proc_set[i].wake_time = 0;
             return curr_pid;
         }
 

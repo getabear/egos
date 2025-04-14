@@ -9,7 +9,8 @@ enum proc_status {
     PROC_READY,   /* finished loading elf and wait for first running */
     PROC_RUNNING,
     PROC_RUNNABLE,
-    PROC_PENDING_SYSCALL
+    PROC_PENDING_SYSCALL,
+    PROC_SLEEP_SYSCALL
 };
 
 #define SAVED_REGISTER_NUM  32
@@ -28,6 +29,7 @@ struct process {
     // 构建创建时间， 响应时间（创建到调度的时间）， 在cpu上运行的时间, 上次运行的开始时间
     ulonglong create_time, response_time, cpu_time, last_time;
     int schedule_num;           // 调度的次数
+    ulonglong wake_time;
     /* Student's code ends here. */
 };
 

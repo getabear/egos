@@ -27,6 +27,10 @@ void sleep(uint usec) {
     /* Send a message to GPID_PROCESS for process sleep. For simplicity,
      * you can assume that GPID_PROCESS will be scheduled and handle the
      * message before the kernel re-schedules the current process. */
+    struct proc_request req;
+    req.type = PROC_SLEEP;
+    *(uint*)&req.argv = usec;
+    grass->sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
 
     /* Student's code ends here. */
 }
@@ -62,6 +66,7 @@ int file_read(int file_ino, uint offset, char* block) {
 #ifndef KERNEL /* terminal read/write for user applications */
 
 int term_read(char* buf, uint len) {
+    // printf("term_read2()");
     struct term_request req;
     struct term_reply reply;
     req.type = TERM_INPUT;
@@ -83,6 +88,7 @@ void term_write(char* str, uint len) {
 #else /* terminal read/write for the kernel */
 
 int term_read(char* buf, uint len) {
+    // printf("term_read1()");
     char c;
     for (int i = 0; i < len - 1; i++) {
         earth->tty_read(&c);
