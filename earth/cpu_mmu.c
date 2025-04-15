@@ -219,7 +219,9 @@ void mmu_init() {
     /* Student's code goes here (System Call & Protection). */
 
     /* Setup PMP NAPOT region 0x80400000 - 0x80800000 as r/w/x */
-
+    uint pmpaddr = (0x80400000 >> 2) | ((1 << 19) - 1);
+    asm("csrw pmpaddr0, %0"::"r"(pmpaddr));
+    asm("csrw pmpcfg0, %0"::"r"(0x1f));
     /* Student's code ends here. */
 
     /* Choose memory translation mechanism in QEMU */

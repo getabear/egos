@@ -10,6 +10,7 @@
 #include "egos.h"
 #include "syscall.h"
 #include "process.h"
+#include "servers.h"
 #include <string.h>
 
 uint core_in_kernel;
@@ -51,6 +52,7 @@ void kernel_entry(uint mcause) {
 #define EXCP_ID_ECALL_M 11
 static void proc_yield();
 static void proc_try_syscall(struct process* proc);
+static void proc_try_send(struct process* sender);
 
 static void excp_entry(uint id) {
     if (id >= EXCP_ID_ECALL_U && id <= EXCP_ID_ECALL_M) {
@@ -69,7 +71,23 @@ static void excp_entry(uint id) {
     /* Student's code goes here (System Call & Protection). */
 
     /* Kill the process if curr_pid is a user application. */
+    else{
+        struct proc_request req;
+        req.type = PROC_EXIT;
+        grass->sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
 
+        // 直接调用消息发送， 不使用系统调用的grass->sys_send
+        // struct process *cur_p = &proc_set[curr_proc_idx];
+        // struct proc_request req;
+        // req.type = PROC_EXIT;
+        // cur_p->syscall.receiver = GPID_PROCESS;
+        // memcpy(&cur_p->syscall.content, &req, sizeof(req));
+        // proc_try_send(cur_p);
+        // INFO("proc_try_send!!!!!!!!");
+        // proc_yield();
+
+        return;
+    }
     /* Student's code ends here. */
     FATAL("excp_entry: kernel got exception %d", id);
 }
@@ -82,7 +100,7 @@ static void intr_entry(uint id) {
     /* Handle the Ethernet device interrupt. */
 
     /* Student's code ends here. */
-
+    
     FATAL("excp_entry: kernel got interrupt %d", id);
 }
 
@@ -136,12 +154,25 @@ static void proc_yield() {
     
     curr_proc_idx = next_idx;
     earth->timer_reset(core_in_kernel);
+   
     if (CORE_IDLE) {
         /* Student's code goes here (System Call | Multicore & Locks) */
 
         /* Release the kernel lock; Enable interrupts by modifying mstatus;
          * Wait for a timer interrupt with the wfi instruction. */
+         char *status[] = { "PROC_UNUSED",
+                            "PROC_LOADING", /* allocated and wait for loading elf binary */
+                            "PROC_READY",   /* finished loading elf and wait for first running */
+                            "PROC_RUNNING",
+                            "PROC_RUNNABLE",
+                            "PROC_PENDING_SYSCALL",
+                            "PROC_SLEEP_SYSCALL"};
+        for(int i = 0; i < MAX_NPROCESS; i++){
+            if(proc_set[i].status != PROC_UNUSED){
+                INFO("pid = %d, status = %s", proc_set[i].pid, status[proc_set[i].status]);
+        }
 
+    }
         /* Student's code ends here. */
         FATAL("proc_yield: no process to run on core %d", core_in_kernel);
     }
@@ -151,9 +182,12 @@ static void proc_yield() {
     /* Student's code goes here (Protection | Multicore & Locks). */
 
     /* Modify mstatus.MPP to enter machine or user mode after mret. */
-
-    /* Student's code ends here. */
-
+    if(curr_pid < GPID_USER_START){
+        asm("csrs mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为11(机器模式)
+    }else{
+        asm("csrc mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为00(用户模式)
+    }
+        
     /* Setup the entry point for a newly created process */
     if (curr_status == PROC_READY) {
         /* Set argc, argv and initial program counter */

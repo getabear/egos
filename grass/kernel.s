@@ -109,7 +109,7 @@ trap_entry:
     /* so you may need to use sscratch just like how Step2 uses mscratch. */
 
     /* Student's code ends here. */
-
+    
     /* Step8 */
     mret
 

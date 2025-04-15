@@ -16,8 +16,8 @@ enum grass_servers {
     GPID_PROCESS,   /* 1 */
     GPID_TERMINAL,  /* 2 */
     GPID_FILE,      /* 3 */
-    GPID_SHELL,     /* 5 */
-    GPID_USER_START /* 6 */
+    GPID_SHELL,     /* 4 */
+    GPID_USER_START /* 5 */
 };
 
 /* GPID_PROCESS */
