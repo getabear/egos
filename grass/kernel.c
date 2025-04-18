@@ -45,6 +45,9 @@ void kernel_entry(uint mcause) {
     /* Restore the process context */
     asm("csrw mepc, %0" ::"r"(proc_set[curr_proc_idx].mepc));
     memcpy(SAVED_REGISTER_ADDR, curr_saved, SAVED_REGISTER_SIZE);
+    // if(curr_pid == 5){
+    //     INFO("kernel_entry end");
+    // }
 }
 
 #define INTR_ID_TIMER   7
@@ -72,19 +75,12 @@ static void excp_entry(uint id) {
 
     /* Kill the process if curr_pid is a user application. */
     else{
+        uint fault_addr;
+        asm volatile("csrr %0, mtval" : "=r"(fault_addr));
+        INFO("process pid = %d: error code = %d, fault_addr = %u, kill by system", curr_pid, id, fault_addr);
         struct proc_request req;
         req.type = PROC_EXIT;
         grass->sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
-
-        // 直接调用消息发送， 不使用系统调用的grass->sys_send
-        // struct process *cur_p = &proc_set[curr_proc_idx];
-        // struct proc_request req;
-        // req.type = PROC_EXIT;
-        // cur_p->syscall.receiver = GPID_PROCESS;
-        // memcpy(&cur_p->syscall.content, &req, sizeof(req));
-        // proc_try_send(cur_p);
-        // INFO("proc_try_send!!!!!!!!");
-        // proc_yield();
 
         return;
     }
@@ -172,6 +168,7 @@ static void proc_yield() {
                 INFO("pid = %d, status = %s", proc_set[i].pid, status[proc_set[i].status]);
         }
 
+
     }
         /* Student's code ends here. */
         FATAL("proc_yield: no process to run on core %d", core_in_kernel);
@@ -195,6 +192,10 @@ static void proc_yield() {
         curr_saved[1]                = APPS_ARG + 4;
         proc_set[curr_proc_idx].mepc = APPS_ENTRY;
     }
+    // if(curr_pid == 5){
+    //     INFO("curr_pid: %d", curr_pid);
+    // }
+    
     proc_set_running(curr_pid);
 }
 

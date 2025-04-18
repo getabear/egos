@@ -19,6 +19,7 @@ int main() {
 
     /* Send a notification to GPID_PROCESS */
     char buf[SYSCALL_MSG_LEN];
+    // INFO("GPID_FILE");
     strcpy(buf, "Finish GPID_FILE initialization");
     grass->sys_send(GPID_PROCESS, buf, 32);
 

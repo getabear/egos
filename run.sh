@@ -5,3 +5,4 @@ qemu-system-riscv32 \
   -m 16M \
   -smp 5 \
   -drive if=sd,format=raw,file=/home/bear/egos/egos-2000/tools/disk.img
+  

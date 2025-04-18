@@ -9,9 +9,13 @@
 #include <string.h>
 
 int main(int argc, char** argv) {
+    // INFO("cd");
     if (argc == 1) {
         int home_ino = dir_lookup(0, "home/");
+        // INFO("workdir = %d", workdir);
+        // INFO("workdir_ino = %d", workdir_ino);
         workdir_ino  = dir_lookup(home_ino, "yunhao/");
+        
         strcpy(workdir, "/home/yunhao");
         return 0;
     }

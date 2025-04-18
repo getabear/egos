@@ -14,6 +14,11 @@ static void sys_proc_read(uint block_no, char* dst) {
     earth->disk_read(SYS_PROC_EXEC_START + block_no, 1, dst);
 }
 
+// void sys_send_my(int receiver, char* msg, uint size) {
+//     INFO("sys_send_my");
+//     sys_send(receiver, msg, size);
+// }
+
 void grass_entry() {
     SUCCESS("Enter the grass layer");
 
@@ -39,7 +44,9 @@ void grass_entry() {
 
     /* Jump to the entry of process GPID_PROCESS */
     uint mstatus, M_MODE = 3, U_MODE = 0;
-    uint GRASS_MODE = (earth->translation == SOFT_TLB) ? M_MODE : U_MODE;
+    // INFO("earth->translation = %d", earth->translation);
+    // uint GRASS_MODE = (earth->translation == SOFT_TLB) ? M_MODE : U_MODE;
+    uint GRASS_MODE = M_MODE;
     asm("csrr %0, mstatus" : "=r"(mstatus));
     mstatus = (mstatus & ~(3 << 11)) | (GRASS_MODE << 11);
     asm("csrw mstatus, %0" ::"r"(mstatus));
@@ -47,5 +54,6 @@ void grass_entry() {
     asm("csrw mepc, %0" ::"r"(APPS_ENTRY));
     asm("mv a0, %0" ::"r"(APPS_ARG));
     asm("mv a1, %0" ::"r"(&boot_lock));
+    // INFO("GPID_PROCESS ret, mstatus : %d", mstatus);
     asm("mret");
 }

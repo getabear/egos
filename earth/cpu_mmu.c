@@ -97,13 +97,16 @@ void setup_identity_region(int pid, uint addr, uint npages, uint flag) {
         leaf                          = (void*)PAGE_ID_TO_ADDR(ppage_id);
         page_info_table[ppage_id].pid = pid;
         memset(leaf, 0, PAGE_SIZE);
+        // 为什么右移两位，因为页表记录的地址是从第10 - 31 位，共 22 位。
+        // 实际我们只需要记录20位的地址，有两位多余了，所以右移动两位
         root[vpn1] = ((uint)leaf >> 2) | 0x1;
     }
-
+    root[vpn1] |= flag;
     /* Setup the entries in the leaf page table */
     uint vpn0 = (addr >> 12) & 0x3FF;
-    for (uint i = 0; i < npages; i++)
+    for (uint i = 0; i < npages; i++){
         leaf[vpn0 + i] = ((addr + i * PAGE_SIZE) >> 2) | flag;
+    }
 }
 
 void pagetable_identity_map(int pid) {
@@ -219,9 +222,12 @@ void mmu_init() {
     /* Student's code goes here (System Call & Protection). */
 
     /* Setup PMP NAPOT region 0x80400000 - 0x80800000 as r/w/x */
-    uint pmpaddr = (0x80400000 >> 2) | ((1 << 19) - 1);
-    asm("csrw pmpaddr0, %0"::"r"(pmpaddr));
-    asm("csrw pmpcfg0, %0"::"r"(0x1f));
+    // uint pmpaddr = (0x80400000 >> 2) | ((1 << 19) - 1);
+    // INFO("pmpaddr %d", pmpaddr); // 输出538443775
+    
+    // uint pmpaddr = (0x80400000 >> 2) | ((1 << 19) - 1);
+    // asm("csrw pmpaddr0, %0"::"r"(pmpaddr));
+    // asm("csrw pmpcfg0, %0"::"r"(0x1f));
     /* Student's code ends here. */
 
     /* Choose memory translation mechanism in QEMU */

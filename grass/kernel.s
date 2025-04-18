@@ -107,11 +107,11 @@ trap_entry:
     /* Student's code goes here (Multicore & Locks). */
     /* Release the kernel lock and make sure not to modify any registers, */
     /* so you may need to use sscratch just like how Step2 uses mscratch. */
-
-    /* Student's code ends here. */
     
+    /* Student's code ends here. */
     /* Step8 */
     mret
 
 .bss
     kernel_lock:     .word 0
+
