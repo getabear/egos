@@ -75,12 +75,19 @@ static void excp_entry(uint id) {
 
     /* Kill the process if curr_pid is a user application. */
     else{
-        uint fault_addr;
+        uint fault_addr = 0;
+        uint page_table = 0;
         asm volatile("csrr %0, mtval" : "=r"(fault_addr));
-        INFO("process pid = %d: error code = %d, fault addr = %u, exit with code -1!!!", curr_pid, id, fault_addr);
+        asm("csrr %0, satp" :"=r"(page_table));
+        page_table = (page_table & 0xFFFFF) << 12;
+        INFO("process pid = %d: error code = %d, fault addr = 0x%x, mepc = 0x%x, page_table = 0x%x, exit with code -1!!!",
+                curr_pid, id, fault_addr, proc_set[curr_proc_idx].mepc, page_table);
         struct proc_request req;
         req.type = PROC_EXIT;
-        grass->sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
+        // INFO("sys_send(GPID_PROCESS, (void*)&req, sizeof(req))!!!");
+        sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
+        // FATAL("excp_entry: kernel got exception %d", id);
+        // exit();
         return;
     }
     /* Student's code ends here. */
@@ -178,11 +185,11 @@ static void proc_yield() {
     /* Student's code goes here (Protection | Multicore & Locks). */
 
     /* Modify mstatus.MPP to enter machine or user mode after mret. */
-    if(curr_pid < GPID_USER_START){
-        asm("csrs mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为11(机器模式)
-    }else{
-        asm("csrc mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为00(用户模式)
-    }
+    // if(curr_pid < GPID_USER_START){
+    //     asm("csrs mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为11(机器模式)
+    // }else{
+    //     asm("csrc mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为00(用户模式)
+    // }
         
     /* Setup the entry point for a newly created process */
     if (curr_status == PROC_READY) {
@@ -214,12 +221,13 @@ static void proc_try_send(struct process* sender) {
                     return;
                 }
                           
-
+            // INFO("dst->pid = 0x%x, ")
             dst->syscall.status = DONE;
             dst->syscall.sender = sender->pid;
             /* Copy the system call arguments within the kernel PCB. */
             memcpy(dst->syscall.content, sender->syscall.content,
                    SYSCALL_MSG_LEN);
+            
             return;
         }
     }

@@ -73,6 +73,7 @@ void proc_free(int pid) {
         proc_print(pid);
         earth->mmu_free(pid);
         proc_set_status(pid, PROC_UNUSED);
+        // pid_to_pagetable_base[pid] = 0;
         return;
     }
 

@@ -85,7 +85,7 @@ void format_to_str(char* out, const char* fmt, va_list args) {
                 ull_to_str(va_arg(args, unsigned long long), llu);
                 strcat(out, llu);
             } else if(*fmt == 'x'){
-                itoa(va_arg(args, int), out + strlen(out), 16);
+                utoa(va_arg(args, int), out + strlen(out), 16);
             }
         }
     }

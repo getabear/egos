@@ -51,18 +51,20 @@ int main() {
                 grass->sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
                 grass->sys_recv(GPID_PROCESS, NULL, (void*)&reply,
                                 sizeof(reply));
-
                 if (reply.type != CMD_OK)
                     INFO("sys_shell: command causes an error");
-                else if (req.argv[req.argc - 1][0] != '&')
+                else if (req.argv[req.argc - 1][0] != '&'){
                     /* Wait for foreground command to terminate */
                     grass->sys_recv(GPID_PROCESS, NULL, (void*)&reply,
                                     sizeof(reply));
+                }
             }
         }
 
         do {
-            printf("\x1B[1;32m➜ \x1B[1;36m%s\x1B[1;0m ", workdir);
+            // 这里的workdir是没有地址映射的，访问会出错，所以直接输出字符串（"workdir"）
+            printf("\x1B[1;32m➜ \x1B[1;36m%s\x1B[1;0m ", "workdir");
         } while (term_read(buf, TERM_BUF_SIZE) == 0);
+        // while(1);
     }
 }

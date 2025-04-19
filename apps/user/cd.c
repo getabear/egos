@@ -9,11 +9,10 @@
 #include <string.h>
 
 int main(int argc, char** argv) {
-    // INFO("cd");
     if (argc == 1) {
         int home_ino = dir_lookup(0, "home/");
-        // INFO("workdir = %d", workdir);
-        // INFO("workdir_ino = %d", workdir_ino);
+        // INFO("workdir = 0x%x", workdir);
+        // INFO("workdir_ino = 0x%x", workdir_ino);
         workdir_ino  = dir_lookup(home_ino, "yunhao/");
         
         strcpy(workdir, "/home/yunhao");
@@ -27,6 +26,7 @@ int main(int argc, char** argv) {
         INFO("cd: directory %s not found", argv[1]);
         return -1;
     }
+
     workdir_ino = dir_ino;
 
     /* Set the path name to the new working directory */

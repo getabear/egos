@@ -31,11 +31,7 @@ uint mmu_alloc() {
     FATAL("mmu_alloc: no more free memory");
 }
 
-void mmu_free(int pid) {
-    for (uint i = 0; i < APPS_PAGES_CNT; i++)
-        if (page_info_table[i].use && page_info_table[i].pid == pid)
-            memset(&page_info_table[i], 0, sizeof(struct page_info));
-}
+
 
 /* Software TLB Translation */
 void soft_tlb_map(int pid, uint vpage_no, uint ppage_id) {
@@ -85,7 +81,15 @@ static uint* leaf;
 static uint* pid_to_pagetable_base[MAX_NPROCESS];
 /* Assume at most MAX_NPROCESS unique processes for simplicity */
 
+void mmu_free(int pid) {
+    for (uint i = 0; i < APPS_PAGES_CNT; i++)
+        if (page_info_table[i].use && page_info_table[i].pid == pid)
+            memset(&page_info_table[i], 0, sizeof(struct page_info));
+    pid_to_pagetable_base[pid] = NULL;
+}
+
 void setup_identity_region(int pid, uint addr, uint npages, uint flag) {
+    // INFO("setup_identity_region start");
     uint vpn1 = addr >> 22;
 
     if (root[vpn1] & 0x1) {
@@ -95,6 +99,7 @@ void setup_identity_region(int pid, uint addr, uint npages, uint flag) {
         /* Leaf has not been allocated */
         uint ppage_id                 = earth->mmu_alloc();
         leaf                          = (void*)PAGE_ID_TO_ADDR(ppage_id);
+        // INFO("setup_identity_region leaf: 0x%x", leaf);
         page_info_table[ppage_id].pid = pid;
         memset(leaf, 0, PAGE_SIZE);
         // 为什么右移两位，因为页表记录的地址是从第10 - 31 位，共 22 位。
@@ -142,9 +147,84 @@ void pagetable_identity_map(int pid) {
         /* Student's code ends here. */
     }
 }
+uint copy_kernel_page(uint* app_root_page, uint base_addr){
+    // app_root_page 一个配置项 4M
+    uint vpn1 = base_addr >> 22;
+    if(!(app_root_page[vpn1] & 0x1)){
+        app_root_page[vpn1] = pid_to_pagetable_base[0][vpn1];
+        // uint tmp = (pid_to_pagetable_base[0][vpn1] << 2) & 0xFFFFF000;
+        // INFO("copy kernel num， vaddr: 0x%x, paddr: 0x%x", base_addr, tmp);
+    }
+}
+// 内核页表做恒等映射
+uint init_kernel_page(uint* app_root_page){
+    // 系统应用需要内核页表
+    copy_kernel_page(app_root_page, RAM_START);
+    copy_kernel_page(app_root_page, APPS_PAGES_BASE);
+    copy_kernel_page(app_root_page, APPS_PAGES_BASE + (0x1000 << 10));
+    copy_kernel_page(app_root_page, CLINT_BASE);
+    copy_kernel_page(app_root_page, UART_BASE);
+    copy_kernel_page(app_root_page, SPI_BASE);
+}
+
+// 根据pid和vaddr得到页表地址
+uint* table_entry(uint vaddr, uint pid){
+
+    uint *root_page = pid_to_pagetable_base[pid];
+    uint id = 0;
+    // 页表不存在
+    if(root_page <= 0){
+        // 建立根页表
+        id = mmu_alloc();
+        page_info_table[id].pid = pid;
+        memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
+        root_page = (uint*)PAGE_ID_TO_ADDR(id);
+        pid_to_pagetable_base[pid] = root_page; 
+        // INFO("root page 0x%x", root_page); 
+        // 系统应用映射内核页表
+        if(pid < GPID_USER_START){
+            init_kernel_page(root_page);
+        }else{
+            // 用户程序，初始化0x80602000
+            uint vaddr = 0x80602000;
+            uint vpn1 = vaddr >> 22;
+            id = mmu_alloc();
+            uint paddr = (uint)PAGE_ID_TO_ADDR(id);
+            page_info_table[id].pid = pid;
+            memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
+            // 根页表
+            root_page[vpn1] = (paddr >> 2) |  0x1;
+            // leaf页表
+            uint vpn0 = vaddr >> 12 & 0x3FF;
+            id = mmu_alloc();
+            uint app_addr = (uint)PAGE_ID_TO_ADDR(id);
+            page_info_table[id].pid = pid;
+            memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
+            ((uint*)paddr)[vpn0] = (app_addr >> 2) | USER_RWX;
+        } 
+        
+    }
+    uint vpn1 = vaddr >> 22;
+    uint page_entry = 0;
+    if(!(root_page[vpn1] & 0x1)){
+        // 建立leaf页表
+        id = mmu_alloc();
+        page_info_table[id].pid = pid;
+        memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
+        // RWX全为0表示指向下一级页表
+        page_entry = (((uint)PAGE_ID_TO_ADDR(id) >> 2) | 0x1);
+        root_page[vpn1] = (uint)page_entry;
+    }
+    page_entry = ((root_page[vpn1] << 2) & 0xFFFFF000);
+    return (uint*)page_entry;
+}
+
 
 void page_table_map(int pid, uint vpage_no, uint ppage_id) {
     if (pid >= MAX_NPROCESS) FATAL("page_table_map: pid too large");
+    // if(pid >= GPID_USER_START){
+    //     INFO("pid:%d, vpage_no:0x%x, ppage_id:0x%x", pid, vpage_no, ppage_id);
+    // }
 
     /* Student's code goes here (Virtual Memory). */
 
@@ -172,16 +252,37 @@ void page_table_map(int pid, uint vpage_no, uint ppage_id) {
     soft_tlb_map(pid, vpage_no, ppage_id);
 
     /* Student's code ends here. */
+    // 功能，建立页表的映射 vaddr->paddr 虚拟地址到物理地址
+    // INFO("page_table_map start");
+    uint vaddr = (uint)PAGE_NO_TO_ADDR(vpage_no);
+    uint *leaf_entry = table_entry(vaddr, pid);
+    uint vpn0 = vaddr >> 12 & 0x3FF;
+    // 存在该页表项， 直接返回
+    if(leaf_entry[vpn0] & 0x1){
+        return;
+    }
+    leaf_entry[vpn0] = ((uint)PAGE_ID_TO_ADDR(ppage_id) >> 2) |  USER_RWX;
+    // INFO("page_table_map end");
+  
+    INFO("pagetable_base[pid] = %x,vaddr = 0x%x, phy addr = 0x%x",
+     pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
+    
 }
+
+
 
 void page_table_switch(int pid) {
     /* Student's code goes here (Virtual Memory). */
 
     /* Remove the following line of code and, instead, modify the page table
      * base register (satp) similar to the code in mmu_init(). */
-    soft_tlb_switch(pid);
+    // soft_tlb_switch(pid);
 
     /* Student's code ends here. */
+    uint page_table = (uint)pid_to_pagetable_base[pid];
+    // 切换根页表
+    // INFO("page_table = 0x%x, root = 0x%x", page_table, root);
+    asm("csrw satp, %0" ::"r"(((uint)page_table >> 12) | (1 << 31)));
 }
 
 uint page_table_translate(int pid, uint vaddr) {
@@ -189,9 +290,29 @@ uint page_table_translate(int pid, uint vaddr) {
 
     /* Remove the following line of code and, instead, walk through the page
      * tables of process pid and return the paddr mapped from vaddr. */
-    return soft_tlb_translate(pid, vaddr);
+    // return soft_tlb_translate(pid, vaddr);
 
     /* Student's code ends here. */
+    uint* pagetable_base = pid_to_pagetable_base[pid];
+    if(!pagetable_base){
+        FATAL("page_table_translate: pagetable_base is NULL");
+    }
+    uint vpn1 = vaddr >> 22;
+    // 地址有效
+    if(pagetable_base[vpn1] & 0x1){
+        uint *page_entry = (uint*)(((uint)pagetable_base[vpn1] << 2) & 0xFFFFF000);
+        uint vpn0 = vaddr >> 12 & 0x3FF;
+        if(page_entry[vpn0] & 0x1){
+            uint paddr = (page_entry[vpn0] << 2) & 0xFFFFF000;
+            return paddr + (vaddr & 0xFFF);
+        }else{
+            FATAL("page_table_translate: error 1!");
+        }
+    }
+    else{
+        FATAL("page_table_translate: error 2!");
+    }
+    
 }
 
 void flush_cache() {
@@ -226,7 +347,7 @@ void mmu_init() {
     */ 
     asm("csrw pmpaddr0, %0" : : "r"(0x40000000));
     asm("csrw pmpcfg0, %0" : : "r"(0xF));
-    INFO("app addrs space: 4GB");
+    INFO("app addrs space: 1GB");
 
     /* Student's code goes here (System Call & Protection). */
 

@@ -15,6 +15,7 @@ void sys_send(int receiver, char* msg, uint size) {
     // INFO("sys_send");
     sc->type     = SYS_SEND;
     sc->receiver = receiver;
+    // INFO("memcpy(sc->content, msg, size);");
     memcpy(sc->content, msg, size);
     asm("ecall");
 }

@@ -31,14 +31,6 @@ void elf_load(int pid, elf_reader reader, int argc, void** argv) {
         uint filesz       = pheader[i].p_filesz;
         uint curr_pageno  = addr / PAGE_SIZE;
         uint end_pageno   = (addr + memsz) / PAGE_SIZE;
-        // if(pid == 5){
-        //     INFO("addr: %u, addr + memsz: %u", addr, addr + memsz);
-        //     INFO("curr_pageno: %u, end_pageno: %u", curr_pageno, end_pageno);
-        //     // [INFO] addr: 2151677952, addr + memsz: 2151687016
-        //     // [INFO] curr_pageno: 525312, end_pageno: 525314
-        //     // [INFO] addr: 2151710720, addr + memsz: 2151713020
-        //     // [INFO] curr_pageno: 525320, end_pageno: 525320
-        // }
         uint curr_blockno = pheader[i].p_offset / BLOCK_SIZE;
         for (uint ppage_id, off = 0; off < filesz; off += BLOCK_SIZE) {
             /* Allocate one page (4KB) for every 8 blocks (512 bytes) */
