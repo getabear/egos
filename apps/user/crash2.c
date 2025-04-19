@@ -12,6 +12,10 @@
 #include <string.h>
 
 int main() {
+    // uint start = *(uint*)(0x80400000);
+    // printf("start = %u\n\r", start);
+    uint end = *(uint*)(0x80800000);
+    printf("end = %u\n\r", end);
     memset((void*)APPS_PAGES_BASE, 0, RAM_END - APPS_PAGES_BASE);
     /* If the OS protects memory correctly,
      * this memset should trigger an exception, killing this application;

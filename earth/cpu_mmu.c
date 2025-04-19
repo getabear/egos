@@ -98,10 +98,10 @@ void setup_identity_region(int pid, uint addr, uint npages, uint flag) {
         page_info_table[ppage_id].pid = pid;
         memset(leaf, 0, PAGE_SIZE);
         // 为什么右移两位，因为页表记录的地址是从第10 - 31 位，共 22 位。
-        // 实际我们只需要记录20位的地址，有两位多余了，所以右移动两位
+        // 实际我们只需要记录20位的地址，有两位多余了，所以右移动两位(>>12 <<10) 相当于右移两位
         root[vpn1] = ((uint)leaf >> 2) | 0x1;
     }
-    root[vpn1] |= flag;
+    // root[vpn1] |= flag;
     /* Setup the entries in the leaf page table */
     uint vpn0 = (addr >> 12) & 0x3FF;
     for (uint i = 0; i < npages; i++){
@@ -119,7 +119,9 @@ void pagetable_identity_map(int pid) {
 
     /* Allocate the leaf page tables */
     for (uint i = RAM_START; i < RAM_END; i += PAGE_SIZE * 1024)
+    {
         setup_identity_region(pid, i, 1024, USER_RWX);    /* RAM   */
+    }
     setup_identity_region(pid, CLINT_BASE, 16, USER_RWX); /* CLINT */
     setup_identity_region(pid, UART_BASE, 1, USER_RWX);   /* UART  */
     setup_identity_region(pid, SPI_BASE, 1, USER_RWX);    /* SPI   */
@@ -198,6 +200,7 @@ void flush_cache() {
         /* See
          * https://github.com/yhzhang0128/litex/blob/egos/litex/soc/cores/cpu/vexriscv_smp/system.h#L9-L25
          */
+        // INFO("ARTY");
         asm(".word(0x100F)\nnop\nnop\nnop\nnop\nnop\n");
     }
     if (earth->translation == PAGE_TABLE) {
@@ -205,7 +208,9 @@ void flush_cache() {
         /* See
          * https://riscv.org/wp-content/uploads/2017/05/riscv-privileged-v1.10.pdf#subsection.4.2.1
          */
+        // INFO("PAGE_TABLE");
         asm("sfence.vma zero,zero");
+        // asm volatile ("sfence.vma");
     }
 }
 
@@ -215,9 +220,13 @@ void mmu_init() {
     earth->mmu_alloc       = mmu_alloc;
     earth->mmu_flush_cache = flush_cache;
 
-    /* Setup a PMP region for the whole 4GB address space */
+    /* Setup a PMP region for the whole 4GB address space 
+        此处设置所有物理内存可以访问，因为如果页表处的物理内存不能访问的话，mmu无法完成地址转换
+        mmu转换地址的时候的特权级，与cpu的当前特权级有关，也就是在用户模式下，mmu相当于也只有用户特权级
+    */ 
     asm("csrw pmpaddr0, %0" : : "r"(0x40000000));
     asm("csrw pmpcfg0, %0" : : "r"(0xF));
+    INFO("app addrs space: 4GB");
 
     /* Student's code goes here (System Call & Protection). */
 
@@ -225,10 +234,19 @@ void mmu_init() {
     // uint pmpaddr = (0x80400000 >> 2) | ((1 << 19) - 1);
     // INFO("pmpaddr %d", pmpaddr); // 输出538443775
     
+    // 用户程序地址空间
     // uint pmpaddr = (0x80400000 >> 2) | ((1 << 19) - 1);
-    // asm("csrw pmpaddr0, %0"::"r"(pmpaddr));
-    // asm("csrw pmpcfg0, %0"::"r"(0x1f));
-    /* Student's code ends here. */
+    // uint pmpcfg = 0;
+    // asm("csrw pmpaddr0, %0"::"r"(pmpaddr));         // 这个地址读写执行
+    // asm("csrr %0, pmpcfg0":"=r"(pmpcfg));
+    // pmpcfg |= 0x1f;
+    // asm("csrw pmpcfg0, %0"::"r"(pmpcfg));
+    // // 页表地址空间
+    // pmpaddr = (0x80800000 >> 2) | ((1 << 20) - 1);
+    // asm("csrw pmpaddr1, %0"::"r"(pmpaddr));         // 这个地址只读, 页表没有读权限会导致内存访问异常
+    // asm("csrr %0, pmpcfg0":"=r"(pmpcfg));
+    // pmpcfg |= 0x19 << 8;
+    // asm("csrw pmpcfg0, %0"::"r"(pmpcfg));
 
     /* Choose memory translation mechanism in QEMU */
     CRITICAL("Choose a memory translation mechanism:");

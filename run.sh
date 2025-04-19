@@ -6,3 +6,5 @@ qemu-system-riscv32 \
   -smp 5 \
   -drive if=sd,format=raw,file=/home/bear/egos/egos-2000/tools/disk.img
   
+
+  # qemu-system-riscv32 -machine virt -kernel your_kernel.elf -s -S

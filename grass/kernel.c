@@ -77,11 +77,10 @@ static void excp_entry(uint id) {
     else{
         uint fault_addr;
         asm volatile("csrr %0, mtval" : "=r"(fault_addr));
-        INFO("process pid = %d: error code = %d, fault_addr = %u, kill by system", curr_pid, id, fault_addr);
+        INFO("process pid = %d: error code = %d, fault addr = %u, exit with code -1!!!", curr_pid, id, fault_addr);
         struct proc_request req;
         req.type = PROC_EXIT;
         grass->sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
-
         return;
     }
     /* Student's code ends here. */

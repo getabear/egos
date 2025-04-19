@@ -45,8 +45,8 @@ void grass_entry() {
     /* Jump to the entry of process GPID_PROCESS */
     uint mstatus, M_MODE = 3, U_MODE = 0;
     // INFO("earth->translation = %d", earth->translation);
-    // uint GRASS_MODE = (earth->translation == SOFT_TLB) ? M_MODE : U_MODE;
-    uint GRASS_MODE = M_MODE;
+    uint GRASS_MODE = (earth->translation == SOFT_TLB) ? M_MODE : U_MODE;
+    // uint GRASS_MODE = M_MODE;
     asm("csrr %0, mstatus" : "=r"(mstatus));
     mstatus = (mstatus & ~(3 << 11)) | (GRASS_MODE << 11);
     asm("csrw mstatus, %0" ::"r"(mstatus));
