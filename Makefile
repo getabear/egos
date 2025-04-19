@@ -64,7 +64,7 @@ install: egos
 
 qemu: install
 	@echo "$(YELLOW)-------- Simulate on QEMU-RISCV --------$(END)"
-	./run.sh
+	$(QEMU) -nographic -readconfig tools/qemu/config.toml
 
 program: install
 	@echo "$(YELLOW)-------- Program the Arty $(BOARD) on-board ROM --------$(END)"
