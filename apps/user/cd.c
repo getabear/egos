@@ -11,8 +11,8 @@
 int main(int argc, char** argv) {
     if (argc == 1) {
         int home_ino = dir_lookup(0, "home/");
-        // INFO("workdir = 0x%x", workdir);
-        // INFO("workdir_ino = 0x%x", workdir_ino);
+        // INFO("workdir = 0x%x", workdir);                 // [INFO] workdir = 0x80602004
+        // INFO("workdir_ino = 0x%x", workdir_ino);         // [INFO] workdir_ino = 0x0
         workdir_ino  = dir_lookup(home_ino, "yunhao/");
         
         strcpy(workdir, "/home/yunhao");

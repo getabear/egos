@@ -160,6 +160,7 @@ uint copy_kernel_page(uint* app_root_page, uint base_addr){
 uint init_kernel_page(uint* app_root_page){
     // 系统应用需要内核页表
     copy_kernel_page(app_root_page, RAM_START);
+    // copy_kernel_page(app_root_page, APPS_ENTRY);
     copy_kernel_page(app_root_page, APPS_PAGES_BASE);
     copy_kernel_page(app_root_page, APPS_PAGES_BASE + (0x1000 << 10));
     copy_kernel_page(app_root_page, CLINT_BASE);
@@ -264,7 +265,7 @@ void page_table_map(int pid, uint vpage_no, uint ppage_id) {
     leaf_entry[vpn0] = ((uint)PAGE_ID_TO_ADDR(ppage_id) >> 2) |  USER_RWX;
     // INFO("page_table_map end");
   
-    INFO("pagetable_base[pid] = %x,vaddr = 0x%x, phy addr = 0x%x",
+    INFO("pid = %d, pagetable_base[pid] = %x,vaddr = 0x%x, phy addr = 0x%x", pid,
      pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
     
 }
@@ -280,8 +281,10 @@ void page_table_switch(int pid) {
 
     /* Student's code ends here. */
     uint page_table = (uint)pid_to_pagetable_base[pid];
+    if(page_table <= 0){
+        FATAL("page_table_switch error!!!");
+    }
     // 切换根页表
-    // INFO("page_table = 0x%x, root = 0x%x", page_table, root);
     asm("csrw satp, %0" ::"r"(((uint)page_table >> 12) | (1 << 31)));
 }
 

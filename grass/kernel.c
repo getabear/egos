@@ -43,11 +43,12 @@ void kernel_entry(uint mcause) {
     (mcause & (1 << 31)) ? intr_entry(mcause & 0x3FF) : excp_entry(mcause);
 
     /* Restore the process context */
+    if(proc_set[curr_proc_idx].mepc & 3){
+        INFO("proc_set[curr_proc_idx].mepc = 0x%x", proc_set[curr_proc_idx].mepc);
+    }
     asm("csrw mepc, %0" ::"r"(proc_set[curr_proc_idx].mepc));
     memcpy(SAVED_REGISTER_ADDR, curr_saved, SAVED_REGISTER_SIZE);
-    // if(curr_pid == 5){
-    //     INFO("kernel_entry end");
-    // }
+
 }
 
 #define INTR_ID_TIMER   7
@@ -61,6 +62,7 @@ static void excp_entry(uint id) {
     if (id >= EXCP_ID_ECALL_U && id <= EXCP_ID_ECALL_M) {
         /* Copy the system call arguments from user space to the kernel */
         uint syscall_paddr = earth->mmu_translate(curr_pid, SYSCALL_ARG);
+
         memcpy(&proc_set[curr_proc_idx].syscall, (void*)syscall_paddr,
                sizeof(struct syscall));
 
@@ -69,6 +71,7 @@ static void excp_entry(uint id) {
         proc_set_pending(curr_pid);
         proc_try_syscall(&proc_set[curr_proc_idx]);
         proc_yield();
+
         return;
     }
     /* Student's code goes here (System Call & Protection). */
@@ -82,12 +85,15 @@ static void excp_entry(uint id) {
         page_table = (page_table & 0xFFFFF) << 12;
         INFO("process pid = %d: error code = %d, fault addr = 0x%x, mepc = 0x%x, page_table = 0x%x, exit with code -1!!!",
                 curr_pid, id, fault_addr, proc_set[curr_proc_idx].mepc, page_table);
+
+        // 此处一定要调用内核空间的函数，用户空间函数可能同一个地址对应的不同的物理地址
         struct proc_request req;
         req.type = PROC_EXIT;
-        // INFO("sys_send(GPID_PROCESS, (void*)&req, sizeof(req))!!!");
-        sys_send(GPID_PROCESS, (void*)&req, sizeof(req));
-        // FATAL("excp_entry: kernel got exception %d", id);
-        // exit();
+        proc_set[curr_proc_idx].syscall.receiver = GPID_PROCESS;        // 指定接收者
+        memcpy(proc_set[curr_proc_idx].syscall.content, &req, sizeof(req));
+        proc_set_pending(curr_pid);
+        proc_try_send(&proc_set[curr_proc_idx]);            // 发送消息给接收者
+        proc_yield();                                       // 唤醒接收者
         return;
     }
     /* Student's code ends here. */
@@ -172,10 +178,8 @@ static void proc_yield() {
         for(int i = 0; i < MAX_NPROCESS; i++){
             if(proc_set[i].status != PROC_UNUSED){
                 INFO("pid = %d, status = %s", proc_set[i].pid, status[proc_set[i].status]);
+            }
         }
-
-
-    }
         /* Student's code ends here. */
         FATAL("proc_yield: no process to run on core %d", core_in_kernel);
     }
@@ -198,8 +202,8 @@ static void proc_yield() {
         curr_saved[1]                = APPS_ARG + 4;
         proc_set[curr_proc_idx].mepc = APPS_ENTRY;
     }
-    // if(curr_pid == 5){
-    //     INFO("curr_pid: %d", curr_pid);
+    // if(curr_pid == 1){
+    //     INFO("mepc: 0x%x", proc_set[curr_proc_idx].mepc);
     // }
     
     proc_set_running(curr_pid);
@@ -221,7 +225,6 @@ static void proc_try_send(struct process* sender) {
                     return;
                 }
                           
-            // INFO("dst->pid = 0x%x, ")
             dst->syscall.status = DONE;
             dst->syscall.sender = sender->pid;
             /* Copy the system call arguments within the kernel PCB. */
