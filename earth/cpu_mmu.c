@@ -152,90 +152,79 @@ uint copy_kernel_page(uint* app_root_page, uint base_addr){
     uint vpn1 = base_addr >> 22;
     if(!(app_root_page[vpn1] & 0x1)){
         app_root_page[vpn1] = pid_to_pagetable_base[0][vpn1];
-        // uint tmp = (pid_to_pagetable_base[0][vpn1] << 2) & 0xFFFFF000;
-        // INFO("copy kernel num， vaddr: 0x%x, paddr: 0x%x", base_addr, tmp);
     }
 }
 // 内核页表做恒等映射
-uint init_kernel_page(uint* app_root_page){
+uint init_kernel_page(uint* root_page){
     // 系统应用需要内核页表
-    copy_kernel_page(app_root_page, RAM_START);
-    // copy_kernel_page(app_root_page, APPS_ENTRY);
-    copy_kernel_page(app_root_page, APPS_PAGES_BASE);
-    copy_kernel_page(app_root_page, APPS_PAGES_BASE + (0x1000 << 10));
-    copy_kernel_page(app_root_page, CLINT_BASE);
-    copy_kernel_page(app_root_page, UART_BASE);
-    copy_kernel_page(app_root_page, SPI_BASE);
+    copy_kernel_page(root_page, RAM_START);
+    copy_kernel_page(root_page, APPS_PAGES_BASE);
+    copy_kernel_page(root_page, APPS_PAGES_BASE + (0x1000 << 10));
+    copy_kernel_page(root_page, CLINT_BASE);
+    copy_kernel_page(root_page, UART_BASE);
+    copy_kernel_page(root_page, SPI_BASE);
 }
-uint map_work_page(uint* root_page, uint pid){
-    uint vaddr = 0x80602000;
-    uint paddr = 0;
-    uint vpn1 = vaddr >> 22;
-    if(!(root_page[vpn1] & 0x1)){
-        uint page_id = mmu_alloc();
-        paddr = (uint)PAGE_ID_TO_ADDR(page_id);
-        page_info_table[page_id].pid = pid;    
-        memset((char*)paddr, 0, PAGE_SIZE);
-        root_page[vpn1] = (paddr >> 2) | 0x1;
+
+uint* malloc_page(uint pid){
+    uint page_id = mmu_alloc();
+    char* paddr = PAGE_ID_TO_ADDR(page_id);
+    memset(paddr, 0 , PAGE_SIZE);
+    page_info_table[page_id].pid = pid;
+    return (uint *)paddr;
+}
+
+uint* _entry_page(uint* root_page, uint pid, uint vaddr){
+    uint idx = vaddr >> 22;
+    // 存在响应的页表
+    if(root_page[idx] & 0x1){
+        return (uint*)((root_page[idx] << 2) & 0xFFFFF000);
     }
+    uint paddr = (uint)malloc_page(pid);
+    root_page[idx] = (paddr >> 2) | 0x1;
+    return (uint*)paddr;
+}
+
+uint _workdir_page(uint* root_page, uint pid){
+    uint vaddr = 0x80602000;
     static uint work_paddr = 0;
     if(work_paddr == 0){
-        // leaf页表
         uint page_id = mmu_alloc();
+        // 共用
+        page_info_table[page_id].pid = 0;
         work_paddr = (uint)PAGE_ID_TO_ADDR(page_id);
-        page_info_table[page_id].pid = 0;    // 分配给所有用
         memset((char*)work_paddr, 0, PAGE_SIZE);
     }
-    // INFO("map_work_page");
-    uint vpn0 = (vaddr >> 12) & 0x3FF;
-    if(!(((uint *)paddr)[vpn0] & 0x1)){
-        ((uint *)paddr)[vpn0] = (work_paddr >> 2) | USER_RWX; 
+    uint* entry_page = (uint*)_entry_page(root_page, pid, vaddr);
+    uint idx = (vaddr >> 12) & 0x3FF;
+    if(entry_page[idx] & 0x1){
+        return -1;
     }
+    entry_page[idx] = (work_paddr >> 2) | USER_RWX;
+    return 0;
 }
 
 // 根据pid和vaddr得到页表地址
 uint* table_entry(uint vaddr, uint pid){
-    
     uint *root_page = pid_to_pagetable_base[pid];
-    uint id = 0;
     // 页表不存在
     if(root_page <= 0){
         // 建立根页表
-        id = mmu_alloc();
-        page_info_table[id].pid = pid;
-        memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
-        root_page = (uint*)PAGE_ID_TO_ADDR(id);
-        pid_to_pagetable_base[pid] = root_page; 
-        // INFO("root page 0x%x", root_page); 
+        root_page = malloc_page(pid);
+        pid_to_pagetable_base[pid] = root_page;
         // 系统应用映射内核页表
         if(pid < GPID_USER_START){
             init_kernel_page(root_page);
         }
-        // 映射工作目录
-        map_work_page(root_page, pid);
+        // 映射工作目录(系统应用以及普通应用都要)
+        _workdir_page(root_page, pid);
     }
-    uint vpn1 = vaddr >> 22;
-    uint page_entry = 0;
-    if(!(root_page[vpn1] & 0x1)){
-        // 建立leaf页表
-        id = mmu_alloc();
-        page_info_table[id].pid = pid;
-        memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
-        // RWX全为0表示指向下一级页表
-        page_entry = (((uint)PAGE_ID_TO_ADDR(id) >> 2) | 0x1);
-        root_page[vpn1] = (uint)page_entry;
-    }
-    page_entry = ((root_page[vpn1] << 2) & 0xFFFFF000);
-    return (uint*)page_entry;
+    uint* page_entry = _entry_page(root_page, pid, vaddr);
+    return page_entry;
 }
 
 
 void page_table_map(int pid, uint vpage_no, uint ppage_id) {
     if (pid >= MAX_NPROCESS) FATAL("page_table_map: pid too large");
-    // if(pid >= GPID_USER_START){
-    //     INFO("pid:%d, vpage_no:0x%x, ppage_id:0x%x", pid, vpage_no, ppage_id);
-    // }
-
     /* Student's code goes here (Virtual Memory). */
 
     /* clang-format off */
@@ -262,20 +251,17 @@ void page_table_map(int pid, uint vpage_no, uint ppage_id) {
     soft_tlb_map(pid, vpage_no, ppage_id);
 
     /* Student's code ends here. */
-    // 功能，建立页表的映射 vaddr->paddr 虚拟地址到物理地址
-    // INFO("page_table_map start");
     uint vaddr = (uint)PAGE_NO_TO_ADDR(vpage_no);
     uint *leaf_entry = table_entry(vaddr, pid);
-    uint vpn0 = vaddr >> 12 & 0x3FF;
+    uint vpn0 = (vaddr >> 12) & 0x3FF;
     // 存在该页表项， 直接返回
     if(leaf_entry[vpn0] & 0x1){
         return;
     }
-    leaf_entry[vpn0] = ((uint)PAGE_ID_TO_ADDR(ppage_id) >> 2) |  USER_RWX;
-    // INFO("page_table_map end");
+    leaf_entry[vpn0] = ((uint)PAGE_ID_TO_ADDR(ppage_id) >> 2) | USER_RWX;
   
-    // INFO("pid = %d, pagetable_base[pid] = %x,vaddr = 0x%x, phy addr = 0x%x", pid,
-    //  pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
+    INFO("pid = %d, pagetable_base[pid] = 0x%x, vaddr = 0x%x, phy addr = 0x%x", pid,
+     pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
     
 }
 
