@@ -43,12 +43,10 @@ void kernel_entry(uint mcause) {
     (mcause & (1 << 31)) ? intr_entry(mcause & 0x3FF) : excp_entry(mcause);
 
     /* Restore the process context */
-    if(proc_set[curr_proc_idx].mepc & 3){
-        INFO("proc_set[curr_proc_idx].mepc = 0x%x", proc_set[curr_proc_idx].mepc);
-    }
     asm("csrw mepc, %0" ::"r"(proc_set[curr_proc_idx].mepc));
     memcpy(SAVED_REGISTER_ADDR, curr_saved, SAVED_REGISTER_SIZE);
-
+    // INFO("pid = %d, return addr = 0x%x, mepc = 0x%x", 
+    // curr_pid, proc_set[curr_proc_idx].saved_registers[27], proc_set[curr_proc_idx].mepc);
 }
 
 #define INTR_ID_TIMER   7
@@ -62,16 +60,13 @@ static void excp_entry(uint id) {
     if (id >= EXCP_ID_ECALL_U && id <= EXCP_ID_ECALL_M) {
         /* Copy the system call arguments from user space to the kernel */
         uint syscall_paddr = earth->mmu_translate(curr_pid, SYSCALL_ARG);
-
-        memcpy(&proc_set[curr_proc_idx].syscall, (void*)syscall_paddr,
-               sizeof(struct syscall));
-
+        memcpy(&proc_set[curr_proc_idx].syscall, (void*)syscall_paddr, sizeof(struct syscall));
         proc_set[curr_proc_idx].mepc += 4;
         proc_set[curr_proc_idx].syscall.status = PENDING;
         proc_set_pending(curr_pid);
         proc_try_syscall(&proc_set[curr_proc_idx]);
         proc_yield();
-
+        // INFO("cur pid = 0x%x", curr_pid);
         return;
     }
     /* Student's code goes here (System Call & Protection). */
@@ -83,9 +78,8 @@ static void excp_entry(uint id) {
         asm volatile("csrr %0, mtval" : "=r"(fault_addr));
         asm("csrr %0, satp" :"=r"(page_table));
         page_table = (page_table & 0xFFFFF) << 12;
-        INFO("process pid = %d: error code = %d, fault addr = 0x%x, mepc = 0x%x, page_table = 0x%x, exit with code -1!!!",
+        CRITICAL("process pid = %d: error code = %d, fault addr = 0x%x, mepc = 0x%x, page_table = 0x%x, exit with code -1!!!",
                 curr_pid, id, fault_addr, proc_set[curr_proc_idx].mepc, page_table);
-
         // 此处一定要调用内核空间的函数，用户空间函数可能同一个地址对应的不同的物理地址
         struct proc_request req;
         req.type = PROC_EXIT;
@@ -94,6 +88,26 @@ static void excp_entry(uint id) {
         proc_set_pending(curr_pid);
         proc_try_send(&proc_set[curr_proc_idx]);            // 发送消息给接收者
         proc_yield();                                       // 唤醒接收者
+
+
+        /*  下面代码有问题， 两次进入异常会使得curr_pid进程上下文丢失 */
+        // struct syscall *syscall_paddr = (struct syscall *)earth->mmu_translate(curr_pid, SYSCALL_ARG);
+        // INFO("syscall_paddr = 0x%x", syscall_paddr);
+        // syscall_paddr->receiver = GPID_PROCESS;
+        // syscall_paddr->type = SYS_SEND;
+        // memcpy(syscall_paddr->content, &req, sizeof(req));
+        // asm("ecall"); 
+// 照理说虽然会导致curr_pid进程上下文丢失，但是不会影响进程GPID_PROCESS恢复执行，为什么会出错呢？
+// 因为当前我们是通过系统调用eacll进入的，处于机器模式（11），使用ecall时，硬件会自动记录当前的CPU模式，以便返回时恢复
+// 再次使用ecall时，机器处于机器模式，因此返回时会处于机器模式，机器模式没有虚拟地址，返回时直接访问用户空间0x80400000，从而造成错误。
+// 因此在返回时将mstatus寄存器的状态改为用户模式即可让上年的代码无问题。
+// [INFO] process pid = 7: error code = 15, fault addr = 0x0, mepc = 0x8040058c, page_table = 0x80830000, exit with code -1!!!
+// [INFO] proc_set saddr = 0x8000ed48, proc_set eaddr = 0x80065c18
+// [INFO] process pid = 1: error code = 1, fault addr = 0x0, mepc = 0x0, page_table = 0x80808000, exit with code -1!!!
+// [INFO] proc_set saddr = 0x8000ed48, proc_set eaddr = 0x80065c18
+// [INFO] process pid = 7: error code = 12, fault addr = 0x80003104, mepc = 0x80003104, page_table = 0x80830000, exit with code -1!!!
+// [INFO] proc_set saddr = 0x8000ed48, proc_set eaddr = 0x80065c18
+
         return;
     }
     /* Student's code ends here. */
@@ -194,6 +208,9 @@ static void proc_yield() {
     // }else{
     //     asm("csrc mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为00(用户模式)
     // }
+    if(earth->translation == PAGE_TABLE){
+         asm("csrc mstatus, %0"::"r"(3<<11)); // 将mstatus.MPP设置为00(用户模式)
+    }
         
     /* Setup the entry point for a newly created process */
     if (curr_status == PROC_READY) {
@@ -202,9 +219,7 @@ static void proc_yield() {
         curr_saved[1]                = APPS_ARG + 4;
         proc_set[curr_proc_idx].mepc = APPS_ENTRY;
     }
-    // if(curr_pid == 1){
-    //     INFO("mepc: 0x%x", proc_set[curr_proc_idx].mepc);
-    // }
+
     
     proc_set_running(curr_pid);
 }
@@ -224,7 +239,7 @@ static void proc_try_send(struct process* sender) {
                   dst->syscall.sender == sender->pid)){
                     return;
                 }
-                          
+            // INFO("proc_try_send, recv pid = %d, sender->pid = %d", dst->pid, sender->pid);              
             dst->syscall.status = DONE;
             dst->syscall.sender = sender->pid;
             /* Copy the system call arguments within the kernel PCB. */
@@ -243,8 +258,10 @@ static void proc_try_recv(struct process* receiver) {
     /* Copy the system call results from the kernel back to user space. */
     uint syscall_paddr = earth->mmu_translate(receiver->pid, SYSCALL_ARG);
     memcpy((void*)syscall_paddr, &receiver->syscall, sizeof(struct syscall));
+    // INFO("proc_try_recv, recv pid = %d, sender->pid = %d, syscall_paddr = 0x%x", receiver->pid, receiver->syscall.sender, syscall_paddr); 
 
     /* Set the receiver and sender back to RUNNABLE. */
+    // INFO("proc_try_recv runable, pid1 = %d, pid2 = %d", receiver->pid, receiver->syscall.sender);
     proc_set_runnable(receiver->pid);
     proc_set_runnable(receiver->syscall.sender);
 }

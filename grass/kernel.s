@@ -110,8 +110,13 @@ trap_entry:
     
     /* Student's code ends here. */
     /* Step8 */
+
     mret
 
 .bss
     kernel_lock:     .word 0
+/*    
+.data
+    debug_s:  .asciz "Hello, RISC-V!"
+*/
 

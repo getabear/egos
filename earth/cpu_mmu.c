@@ -167,10 +167,35 @@ uint init_kernel_page(uint* app_root_page){
     copy_kernel_page(app_root_page, UART_BASE);
     copy_kernel_page(app_root_page, SPI_BASE);
 }
+uint map_work_page(uint* root_page, uint pid){
+    uint vaddr = 0x80602000;
+    uint paddr = 0;
+    uint vpn1 = vaddr >> 22;
+    if(!(root_page[vpn1] & 0x1)){
+        uint page_id = mmu_alloc();
+        paddr = (uint)PAGE_ID_TO_ADDR(page_id);
+        page_info_table[page_id].pid = pid;    
+        memset((char*)paddr, 0, PAGE_SIZE);
+        root_page[vpn1] = (paddr >> 2) | 0x1;
+    }
+    static uint work_paddr = 0;
+    if(work_paddr == 0){
+        // leaf页表
+        uint page_id = mmu_alloc();
+        work_paddr = (uint)PAGE_ID_TO_ADDR(page_id);
+        page_info_table[page_id].pid = 0;    // 分配给所有用
+        memset((char*)work_paddr, 0, PAGE_SIZE);
+    }
+    // INFO("map_work_page");
+    uint vpn0 = (vaddr >> 12) & 0x3FF;
+    if(!(((uint *)paddr)[vpn0] & 0x1)){
+        ((uint *)paddr)[vpn0] = (work_paddr >> 2) | USER_RWX; 
+    }
+}
 
 // 根据pid和vaddr得到页表地址
 uint* table_entry(uint vaddr, uint pid){
-
+    
     uint *root_page = pid_to_pagetable_base[pid];
     uint id = 0;
     // 页表不存在
@@ -185,25 +210,9 @@ uint* table_entry(uint vaddr, uint pid){
         // 系统应用映射内核页表
         if(pid < GPID_USER_START){
             init_kernel_page(root_page);
-        }else{
-            // 用户程序，初始化0x80602000
-            uint vaddr = 0x80602000;
-            uint vpn1 = vaddr >> 22;
-            id = mmu_alloc();
-            uint paddr = (uint)PAGE_ID_TO_ADDR(id);
-            page_info_table[id].pid = pid;
-            memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
-            // 根页表
-            root_page[vpn1] = (paddr >> 2) |  0x1;
-            // leaf页表
-            uint vpn0 = vaddr >> 12 & 0x3FF;
-            id = mmu_alloc();
-            uint app_addr = (uint)PAGE_ID_TO_ADDR(id);
-            page_info_table[id].pid = pid;
-            memset(PAGE_ID_TO_ADDR(id), 0, PAGE_SIZE);
-            ((uint*)paddr)[vpn0] = (app_addr >> 2) | USER_RWX;
-        } 
-        
+        }
+        // 映射工作目录
+        map_work_page(root_page, pid);
     }
     uint vpn1 = vaddr >> 22;
     uint page_entry = 0;
@@ -265,8 +274,8 @@ void page_table_map(int pid, uint vpage_no, uint ppage_id) {
     leaf_entry[vpn0] = ((uint)PAGE_ID_TO_ADDR(ppage_id) >> 2) |  USER_RWX;
     // INFO("page_table_map end");
   
-    INFO("pid = %d, pagetable_base[pid] = %x,vaddr = 0x%x, phy addr = 0x%x", pid,
-     pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
+    // INFO("pid = %d, pagetable_base[pid] = %x,vaddr = 0x%x, phy addr = 0x%x", pid,
+    //  pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
     
 }
 

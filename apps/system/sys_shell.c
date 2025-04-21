@@ -63,7 +63,8 @@ int main() {
 
         do {
             // 这里的workdir是没有地址映射的，访问会出错，所以直接输出字符串（"workdir"）
-            // printf("\x1B[1;32m➜ \x1B[1;36m%s\x1B[1;0m ", workdir);
+            // printf("\x1B[1;32m➜ \x1B[1;36m%s\x1B[1;0m ", "workdir");
+            printf("\x1B[1;32m➜ \x1B[1;36m%s\x1B[1;0m ", workdir);
         } while (term_read(buf, TERM_BUF_SIZE) == 0);
         // while(1);
     }

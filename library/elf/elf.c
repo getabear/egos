@@ -20,9 +20,6 @@ void elf_load(int pid, elf_reader reader, int argc, void** argv) {
     struct elf32_program_header* pheader = (void*)(hbuf + header->e_phoff);
 
     /* Load the code and data from the ELF-format binary executable file */
-    // if(pid == 5){
-    //     INFO("header->e_phnum: %u", header->e_phnum);  //header->e_phnum: 3
-    // }
     for (uint i = 0; i < header->e_phnum; i++) {
         uint addr = pheader[i].p_vaddr;
         if (addr < RAM_START) continue;

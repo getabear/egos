@@ -51,7 +51,7 @@ int main(int unused, struct multicore* boot) {
         struct proc_request* req = (void*)buf;
         struct proc_reply* reply = (void*)buf;
         grass->sys_recv(GPID_ALL, &sender, buf, SYSCALL_MSG_LEN);
-
+        // INFO("grass->sys_recv");
         switch (req->type) {
             case PROC_SPAWN:
                 reply->type = app_spawn(req);

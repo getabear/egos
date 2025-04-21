@@ -12,7 +12,6 @@
 static struct syscall* sc = (struct syscall*)SYSCALL_ARG;
 
 void sys_send(int receiver, char* msg, uint size) {
-    // INFO("sys_send");
     sc->type     = SYS_SEND;
     sc->receiver = receiver;
     memcpy(sc->content, msg, size);
@@ -20,10 +19,10 @@ void sys_send(int receiver, char* msg, uint size) {
 }
 
 void sys_recv(int from, int* sender, char* buf, uint size) {
-    // INFO("sys_recv");
     sc->type   = SYS_RECV;
     sc->sender = from;
     asm("ecall");
     memcpy(buf, sc->content, size);
     if (sender) *sender = sc->sender;
+    // INFO("sys recv");        // 0x8080e000
 }

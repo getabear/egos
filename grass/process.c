@@ -68,7 +68,7 @@ void proc_free(int pid) {
     
     /* Collect information (e.g., termination time) for process pid,
      * and print out scheduling metrics. Cleanup MLFQ data structures. */
-
+    // INFO("proc_free(int pid), pid = %d", pid);
     if (pid != GPID_ALL) {
         proc_print(pid);
         earth->mmu_free(pid);
