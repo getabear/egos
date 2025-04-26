@@ -143,6 +143,7 @@ int ramread(inode_intf bs, uint ino, uint offset, block_t* block) {
 }
 
 int ramwrite(inode_intf bs, uint ino, uint offset, block_t* block) {
+    // printf("ramwrite offset = %d\n", offset);
     memcpy(fs + offset * BLOCK_SIZE, block, BLOCK_SIZE);
     return 0;
 }

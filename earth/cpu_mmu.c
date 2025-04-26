@@ -260,8 +260,8 @@ void page_table_map(int pid, uint vpage_no, uint ppage_id) {
     }
     leaf_entry[vpn0] = ((uint)PAGE_ID_TO_ADDR(ppage_id) >> 2) | USER_RWX;
   
-    INFO("pid = %d, pagetable_base[pid] = 0x%x, vaddr = 0x%x, phy addr = 0x%x", pid,
-     pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
+    // INFO("pid = %d, pagetable_base[pid] = 0x%x, vaddr = 0x%x, phy addr = 0x%x", pid,
+    //  pid_to_pagetable_base[pid], vaddr, (leaf_entry[vpn0] << 2) & 0xFFFFF000);
     
 }
 

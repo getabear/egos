@@ -54,6 +54,7 @@ int main(int unused, struct multicore* boot) {
         // INFO("grass->sys_recv");
         switch (req->type) {
             case PROC_SPAWN:
+                // INFO("PROC_SPAWN");
                 reply->type = app_spawn(req);
 
                 shell_waiting =
@@ -89,10 +90,12 @@ int main(int unused, struct multicore* boot) {
 static void app_read(uint off, char* dst) { file_read(app_ino, off, dst); }
 
 static int app_spawn(struct proc_request* req) {
+    // INFO("req->argv[0] = %s", req->argv[0]);
     int bin_ino = dir_lookup(0, "bin/");
+    // INFO("bin_ino = %d", bin_ino);
     if ((app_ino = dir_lookup(bin_ino, req->argv[0])) < 0) return CMD_ERROR;
     int argc = req->argv[req->argc - 1][0] == '&' ? req->argc - 1 : req->argc;
-
+    // INFO("req->argv[0] = %s", req->argv[0]);
     app_pid = grass->proc_alloc();
     elf_load(app_pid, app_read, argc, (void**)req->argv);
     grass->proc_set_ready(app_pid);

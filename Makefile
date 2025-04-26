@@ -29,7 +29,7 @@ RELEASE     = build/release
 APPS_DEPS   = apps/*.* library/egos.h library/*/* Makefile
 EGOS_DEPS   = earth/* grass/* library/egos.h library/*/* Makefile
 
-FILESYS     = 1
+FILESYS     = 0
 LDFLAGS     = -nostdlib -lc -lgcc
 INCLUDE     = -Ilibrary -Ilibrary/elf -Ilibrary/file -Ilibrary/libc -Ilibrary/syscall
 CFLAGS      = -march=rv32ima_zicsr -mabi=ilp32 -Wl,--gc-sections -ffunction-sections -fdata-sections -fdiagnostics-show-option
