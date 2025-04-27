@@ -170,6 +170,30 @@ void read_super(inode_intf below, block_t *_block){
     }
 }
 
+int get_offset(inode_intf below, int head, int offset){
+    int block_id = head;
+    block_t *buf = malloc(BLOCK_SIZE);
+    int idx;
+    int start = -1, end = -1;
+    while(offset){
+        if(block_id >= end || end == -1){
+            // 读取fat_entry
+            memset(buf, 0, BLOCK_SIZE);
+            idx = read_index(below, block_id, ENTRY_BLOCK, buf);
+            start = block_id - (block_id % ENTRY_NUM_IN_BLOCK);
+            end = start + ENTRY_NUM_IN_BLOCK;
+        }else{
+            idx = block_id % ENTRY_NUM_IN_BLOCK;
+        }
+        block_id = ((struct entry *)buf)[idx].next;
+        offset--;
+    }
+    free(buf);
+    return block_id;
+}
+
+
+
 int mydisk_read(inode_intf self, uint ino, uint offset, block_t* block) {
     /* Student's code goes here (File System). */
 
@@ -188,13 +212,14 @@ int mydisk_read(inode_intf self, uint ino, uint offset, block_t* block) {
     struct inode *inode_p = (void *)&_block;
     int head = inode_p[idx].head;
     int block_id = head;
-    while(offset){
-        // 读取fat_entry
-        memset(&_block, 0, BLOCK_SIZE);
-        idx = read_index(below, block_id, ENTRY_BLOCK, &_block);
-        block_id = ((struct entry *)&_block)[idx].next;
-        offset--;
-    }
+    // while(offset){
+    //     // 读取fat_entry
+    //     memset(&_block, 0, BLOCK_SIZE);
+    //     idx = read_index(below, block_id, ENTRY_BLOCK, &_block);
+    //     block_id = ((struct entry *)&_block)[idx].next;
+    //     offset--;
+    // }
+    block_id = get_offset(below, head, offset);
     // INFO("block_id = %d", block_id);
 
     return below->read(below, 0, block_id + data_block_start, block);
@@ -228,12 +253,13 @@ int mydisk_write(inode_intf self, uint ino, uint offset, block_t* block) {
     }
     int head = p[idx].head;
     // printf("mydisk_write, head = %d\n", head + data_block_start);
-    while(offset){
-        memset(&_block, 0, BLOCK_SIZE);
-        idx = read_index(below, head, ENTRY_BLOCK, &_block);
-        head = ((struct entry *)&_block)[idx].next;
-        offset--;
-    }
+    // while(offset){
+    //     memset(&_block, 0, BLOCK_SIZE);
+    //     idx = read_index(below, head, ENTRY_BLOCK, &_block);
+    //     head = ((struct entry *)&_block)[idx].next;
+    //     offset--;
+    // }
+    head = get_offset(below, head, offset);
     // printf("mydisk_write, block num = %d\n", head + data_block_start);
    
     return below->write(below, 0, head + data_block_start, block);
