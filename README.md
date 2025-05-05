@@ -1,8 +1,10 @@
-# 本项目一共有三个分支(main、 P4、P6)：
+# 本项目分支说明
 
-1. main 分支， 实现了 TCB 的切换，用以帮助理解条件变量，进程上下文保护，协作式的进程调度
-2. P4 分支，对应 EGOS book [https://egos.fun/book/p4_vm.html]中的 P4 章节，实现了对应的虚拟内存
-3. P6 分支，对应 EGOS book 中的 P6 [https://egos.fun/book/p6_file.html]章节，实现了对应的文件系统
+本项目一共有三个分支：
+
+1. **main** 分支：实现了 TCB 的切换，帮助理解条件变量、进程上下文保护和协作式的进程调度。
+2. **P4** 分支：对应 EGOS book [P4 章节](https://egos.fun/book/p4_vm.html)，实现了对应的虚拟内存。
+3. **P6** 分支：对应 EGOS book [P6 章节](https://egos.fun/book/p6_file.html)，实现了对应的文件系统。
 
 # 操作系统线程实现原理学习笔记
 
