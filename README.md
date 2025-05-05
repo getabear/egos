@@ -104,21 +104,23 @@
     ```
 2. **​​ 调度决策 ​​**
    采用 FIFO 队列实现简单公平调度
-   `   // 调度器伪代码
-next_thread = dequeue(ready_queue);`
+    ```
+     // 调度器伪代码
+     next_thread = dequeue(ready_queue);
+    ```
 3. **​​ 执行现场恢复 ​​**
    从新线程的栈中恢复所有寄存器状态
    参考实现：context.s 中的 RESTORE_ALL_REGISTERS 宏
-   `asm
-.macro RESTORE_ALL_REGISTERS
-    lw ra, 0(sp)    # 恢复返回地址
-    lw s0, 4(sp)    # 恢复被调用者寄存器
-    ...
-    lw sp, 120(sp)  # 恢复栈指针
-.endm
-`
-   下面是协作式线程切换的原理图：
-   ![alt text](img/f864fbc558234.png)
+    ```asm
+     .macro RESTORE_ALL_REGISTERS
+         lw ra, 0(sp)    # 恢复返回地址
+         lw s0, 4(sp)    # 恢复被调用者寄存器
+         ...
+         lw sp, 120(sp)  # 恢复栈指针
+     .endm
+    ```
+    下面是协作式线程切换的原理图：
+    ![alt text](img/f864fbc558234.png)
 
 ## 一、条件变量核心原理
 
